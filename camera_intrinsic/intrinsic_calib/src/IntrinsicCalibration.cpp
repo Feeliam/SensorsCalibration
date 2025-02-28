@@ -21,6 +21,7 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
     undistort_image_path_ = img_dir_path_ + "undistorted/";
     selected_image_path_ = img_dir_path_ + "selected/";
     std::cout << "image path: " << img_dir_path_ << std::endl;
+    // 准备读取文件夹 
     DIR *dir;
     struct dirent *ptr;
     if ((dir = opendir(img_dir_path_.c_str())) == NULL) {
@@ -28,6 +29,7 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
         exit(1);
     }
     while ((ptr = readdir(dir)) != NULL) {
+        // 跳过 "." 和 ".." 目录
         if (strcmp(ptr->d_name, ".") != 0 && strcmp(ptr->d_name, "..") != 0 &&
             opendir((img_dir_path_ + ptr->d_name).c_str()) == nullptr)
             file_names.push_back(ptr->d_name);
@@ -37,6 +39,7 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
         return false;
     }
     closedir(dir);
+
     if (opendir(selected_image_path_.c_str()) == nullptr){
         char command[1024];
         sprintf(command, "mkdir -p %s", selected_image_path_.c_str());
@@ -63,23 +66,25 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
     int total_image_num = file_names.size();
     int detected_image_num = 0;
     for (int i = 0; i < file_names.size(); i++){
-        cv::Mat input_image = cv::imread(img_dir_path_+file_names[i], 0);
+        cv::Mat input_image = cv::imread(img_dir_path_+file_names[i], 0); // 直接读取灰度图
         // img_size_ = input_image.size();
         // detect corner
         std::vector<cv::Point2f> image_corners;
+        //findChessboardCorners 得到的角点是按照从左到右，从上到下的顺序排列的
         bool whether_found = cv::findChessboardCorners(input_image,
                                                        corner_size_,
                                                        image_corners);
         // refining pixel coordinates for given 2d points
+        // 筛选 能识别到的图像
         if (whether_found){
             // whether select this image for calibration
             if (image_selector.addImage(image_corners)){
                 std::cout << "Select image " << file_names[i] << std::endl;
-                selected_file_names.push_back(file_names[i]);
+                selected_file_names.push_back(file_names[i]); // 保存选中的文件名
                 cv::imwrite(selected_image_path_+file_names[i], 
-                            cv::imread(img_dir_path_+file_names[i]));
+                            cv::imread(img_dir_path_+file_names[i])); // 保存选中的文件
                 cv::TermCriteria criteria(cv::TermCriteria::EPS | cv::TermCriteria::EPS, 
-                                        grid_size_, 0.001);
+                                        grid_size_, 0.001); //这里使用 grid_size_ 作为最大迭代次数
                 cv::cornerSubPix(input_image, image_corners, cv::Size(5, 5), 
                                 cv::Size(-1, -1), criteria);
                 // check whether the corner detect is complete 
@@ -89,7 +94,7 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
                 //     std::cout << pt%15 << ": " << image_corners[pt].x << ", "
                 //                     << image_corners[pt].y << std::endl;
                 // }
-                addPoints(image_corners, object_corners);
+                addPoints(image_corners, object_corners); // 添加 2D 3D 点
                 detected_image_num ++;
                 // display corner detect
                 cv::drawChessboardCorners(input_image, corner_size_, 
@@ -131,6 +136,7 @@ bool IntrinsicCalibration::Calibrate(const std::string &img_dir_path,
     return true;
 }
 
+// 保存去畸变的图像到指定目录
 bool IntrinsicCalibration::undistortSingleImage(const std::string &image_path,
     const std::string &output_image_path) 
 {
@@ -149,6 +155,7 @@ bool IntrinsicCalibration::undistortSingleImage(const std::string &image_path,
     return true;
 }
 
+// 保存指定图像到默认目录  ./<calibration_img_path>/undistorted/
 bool IntrinsicCalibration::undistortImages (const std::vector<std::string> &image_names) 
 {
     if (opendir(undistort_image_path_.c_str()) == nullptr){

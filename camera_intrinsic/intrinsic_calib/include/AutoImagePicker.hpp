@@ -28,6 +28,17 @@
 struct BoardSquare {
 public:
   BoardSquare(){};
+  // p1是左上角点，顺时针依次是p2(右上)、p4(右下)、p3(左下)
+  //   p1 -------- p2
+  //   |           |
+  //   |           |
+  //   |           |
+  //   p3 -------- p4
+
+  // angle_left_top: 向量p1p2和向量p1p3的夹角
+  // angle_right_top: 向量p2p1和向量p2p4的夹角
+  // angle_left_bottom: 向量p3p1和向量p3p4的夹角
+  // angle_right_bottom: 通过360°减去其他三个角得到
   BoardSquare(const cv::Point &p1, const cv::Point &p2, const cv::Point &p3,
               const cv::Point &p4, const int &idx = 0) {
     square_vertex.clear();
@@ -35,6 +46,7 @@ public:
     square_vertex.push_back(p2);
     square_vertex.push_back(p3);
     square_vertex.push_back(p4);
+    // 计算四个角的角度 以及中心点  
     angle_left_top =
         VectorAngle(p2.x - p1.x, p2.y - p1.y, p3.x - p1.x, p3.y - p1.y);
     angle_right_top =
@@ -45,12 +57,12 @@ public:
         360.0 - angle_left_top - angle_right_top - angle_left_bottom;
     midpoint.x = (p1.x + p2.x + p3.x + p4.x) / 4.0;
     midpoint.y = (p1.y + p2.y + p3.y + p4.y) / 4.0;
-
+    // 四个角点的最大最小值 
     max_x = std::max(p1.x, std::max(p2.x, std::max(p3.x, p4.x)));
     min_x = std::min(p1.x, std::min(p2.x, std::min(p3.x, p4.x)));
     max_y = std::max(p1.y, std::max(p2.y, std::max(p3.y, p4.y)));
     min_y = std::min(p1.y, std::min(p2.y, std::min(p3.y, p4.y)));
-
+    // 计算四边形的面积
     double d12 =
         sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
     double d13 =
@@ -70,6 +82,8 @@ public:
   // }
   double VectorAngle(const double &x1, const double &y1, const double &x2,
                      const double &y2) {
+    // 计算两个向量的夹角：使用点积公式
+    // cos(θ) = (v1·v2)/(|v1|·|v2|)
     double f =
         (x1 * x2 + y1 * y2) / sqrt(x1 * x1 + y1 * y1) / sqrt(x2 * x2 + y2 * y2);
     return acos(f) * 180 / M_PI;
@@ -107,7 +121,7 @@ public:
   void reset();
 
 private:
-  // check if the board is too far or too inclined
+  // check if the board is too far or too inclined 
   bool checkValidity(const BoardSquare &board);
   bool checkMoveThresh(const BoardSquare &board);
   bool checkAreaThresh(const BoardSquare &board);
